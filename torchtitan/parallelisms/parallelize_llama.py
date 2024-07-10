@@ -415,13 +415,13 @@ def apply_compile(model, job_config: JobConfig):
             "fused_rmsnorm not yet compatible with torch.compile. Please use layernorm or rmsnorm."
         )
 
+    # TODO(anijain): the following flag is on to accelarate compilation
+    #                remove it after it's enabled in pytorch by default
+    torch._dynamo.config.inline_inbuilt_nn_modules = True
+
     for layer_id, transformer_block in model.layers.named_children():
         # turn on per-transformer block compile after AC wrapping and before FSDP
-        # TODO: dynamic shape have some issues so we turn it off for now.
-        # TODO: inline inbuilt nn modules does not work yet, enable it to accelarate
-        # compile time.
-        # torch._dynamo.config.inline_inbuilt_nn_modules = True
-        transformer_block = torch.compile(transformer_block, dynamic=False)
+        transformer_block = torch.compile(transformer_block, fullgraph=True)
         model.layers.register_module(layer_id, transformer_block)
 
     logger.info("Compiled each TransformerBlock with torch.compile")
